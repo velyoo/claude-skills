@@ -324,6 +324,7 @@ sketch.getSelectedDocument().selectedLayers.layers.forEach(l=>{if(l.sharedStyle)
 - **图层引用格式**：`Frame名 → 图层名`，同名图层跨 Frame 时必须加前缀
 - **多 Frame**：先输出汇总矩阵，无问题的 Frame 只占一行，不展开
 - **单 Frame / 无问题 Frame**：直接 `✅ 全部通过` 一行收尾
+- **禁止分组标题**：不要在问题列表中插入「像素对齐」「4pt 网格」「硬编码颜色」等带 emoji 的小标题，所有问题行直接平铺，emoji 只出现在 `❌/⚠️/🔍` 问题行本身
 
 ```
 ## 走查报告 — [页面/Frame 名称]
