@@ -40,6 +40,14 @@ git -C ~/claude-skills pull
 - "启动 Mirror"
 - "我想在手机上预览设计稿"
 
+**安装前需要准备：**
+- Mac 安装 [Node.js](https://nodejs.org)（LTS 版本）
+- Mac 和手机都安装 [Tailscale](https://tailscale.com) 并登录同一账号
+- 向管理员索取 `sketch-mirror.zip` 服务器包
+- Sketch 设置里开启 MCP 开关
+
+Claude 会一步步引导完成配置，按提示操作即可。
+
 ---
 
 > 需要 [Claude Code](https://claude.ai/claude-code) + [Sketch MCP 插件](https://github.com/sketch-hq/sketch-mcp)
