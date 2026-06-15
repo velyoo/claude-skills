@@ -4,18 +4,10 @@
 
 ## 安装方法
 
-```bash
-git clone https://github.com/velyoo/claude-skills.git ~/claude-skills
-mkdir -p ~/.claude/skills/design-audit ~/.claude/skills/sketch-mirror
-ln -sf ~/claude-skills/design-audit/SKILL.md ~/.claude/skills/design-audit/SKILL.md
-ln -sf ~/claude-skills/sketch-mirror/SKILL.md ~/.claude/skills/sketch-mirror/SKILL.md
-```
+1. 下载需要的 SKILL.md 文件
+2. 拖进 VSCode，让 Claude 把这个文件安装成 skill
 
-之后更新：
-
-```bash
-git -C ~/claude-skills pull
-```
+更新时重新下载最新版本，重复以上步骤即可。
 
 ## 技能列表
 
