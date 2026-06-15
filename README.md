@@ -1,6 +1,6 @@
 # claude-skills
 
-InShot 设计组的 Claude Code 技能包，基于 Sketch MCP 的设计工作流提效工具。
+设计师的 Claude Code 技能包，基于 Sketch MCP 的设计工作流提效工具。
 
 ## 安装方法
 
