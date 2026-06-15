@@ -32,21 +32,32 @@ git -C ~/claude-skills pull
 
 ---
 
-### sketch-mirror — 手机实时预览
+### sketch-mirror — 设计稿手机实时预览工具
 
-将 Sketch 设计稿实时镜像到手机，无需导出即可在真机上预览。
+在 Sketch 里选中一个 Frame，手机上立刻看到预览，支持 Android 和 iPhone。
 
 **直接告诉 Claude 就能触发，例如：**
 - "启动 Mirror"
 - "我想在手机上预览设计稿"
 
-**安装前需要准备：**
-- Mac 安装 [Node.js](https://nodejs.org)（LTS 版本）
-- Mac 和手机都安装 [Tailscale](https://tailscale.com) 并登录同一账号
-- 向管理员索取 `sketch-mirror.zip` 服务器包
-- Sketch 设置里开启 MCP 开关
+**主要功能**
+- 选中 Frame 后约 2 秒自动更新
+- 适应屏幕宽度 / 1:1 实际像素切换
+- Android 自动全屏，无系统栏干扰
 
-Claude 会一步步引导完成配置，按提示操作即可。
+**安装步骤**
+1. 安装 Node.js（下载 LTS 版本）：https://nodejs.org
+2. Sketch 设置里开启 MCP 服务
+3. Mac 安装 Tailscale：https://pkgs.tailscale.com/stable/#macos （或官网下载）
+4. 手机安装 Tailscale：App Store (美区) / Google Play 搜索「Tailscale」，登同一账号
+5. 登录 https://login.tailscale.com/admin/dns ，开启「HTTPS Certificates」（首次必做，只需一次）
+6. 下载工具包并解压，双击「启动 Mirror.command」，扫描终端里的二维码连接
+
+**下载**：https://github.com/velyoo/sketch-mirror/releases/latest
+
+**平台支持**
+- Android：Chrome 扫码直接用，点击屏幕自动全屏
+- iPhone：Safari 扫码，可添加到主屏幕作为 PWA 使用
 
 ---
 
