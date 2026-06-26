@@ -71,4 +71,25 @@
 
 ---
 
+### sketch-translate-ui — Sketch 一键翻译插件
+
+将设计稿英文文本一键翻译为中文，或切换为其他语言检查多语言布局适配性。基于豆包 API，无需代理。
+
+**安装**
+1. 下载 `sketch-translate-ui` 文件夹
+2. 将其重命名为 `TranslateUI.sketchplugin`（注意后缀）
+3. 双击安装，或拖入 `~/Library/Application Support/com.bohemiancoding.sketch3/Plugins/`
+
+**使用**
+- 选中画板，菜单 **Plugins → Translate UI → 汉化选中画板**（`Ctrl+Shift+T`）
+- 首次运行填入豆包 API Key 和 Endpoint ID，之后自动记住
+- 多语言压测：`Ctrl+Shift+L`，选目标语言（德/俄/西/葡/印尼），检查文本膨胀后的布局溢出
+
+**获取 API Key**
+1. 注册 [火山引擎](https://console.volcengine.com)
+2. 进入 **方舟 → 在线推理** → 新建接入点（选 Doubao 模型）
+3. 在 **API Key 管理** 里复制 Key，接入点页面复制 `ep-xxx` ID
+
+---
+
 > 需要 [Claude Code](https://claude.ai/claude-code) + [Sketch MCP 插件](https://github.com/sketch-hq/sketch-mcp)
