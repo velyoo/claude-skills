@@ -1,0 +1,33 @@
+{
+  "name": "Translate UI",
+  "identifier": "com.inshot.translate-ui",
+  "version": "1.1",
+  "description": "一键将选中画板的英文文本翻译为中文，或多语言压测（豆包 API）",
+  "compatibleVersion": "70",
+  "commands": [
+    {
+      "name": "汉化选中画板",
+      "identifier": "translate",
+      "script": "translate.js",
+      "handler": "onRun",
+      "shortcut": "ctrl shift t"
+    },
+    {
+      "name": "多语言适配压测…",
+      "identifier": "stress-test",
+      "script": "translate.js",
+      "handler": "onStressTest",
+      "shortcut": "ctrl shift l"
+    },
+    {
+      "name": "重置 API 配置",
+      "identifier": "reset-config",
+      "script": "translate.js",
+      "handler": "onResetConfig"
+    }
+  ],
+  "menu": {
+    "title": "Translate UI",
+    "items": ["translate", "stress-test", "-", "reset-config"]
+  }
+}
