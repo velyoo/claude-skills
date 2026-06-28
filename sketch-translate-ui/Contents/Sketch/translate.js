@@ -182,10 +182,6 @@ function applyTranslations(textMap, texts, tr) {
       var target = targets[mi]
       if (target.kind === 'text') {
         target.layer.text = translated
-        if (!target.layer.fixedWidth) {
-          target.layer.fixedWidth = true
-          target.layer.fixedWidth = false
-        }
         count++
       } else {
         var ovs = target.layer.overrides
@@ -255,5 +251,127 @@ function callDoubao(apiKey, model, texts, langName) {
     return { ok: true, data: JSON.parse(content) }
   } catch(e) {
     return { ok: false, error: '翻译结果解析失败：' + content.slice(0, 200) }
+  }
+}
+
+var onRenameLayer = function(context) {
+  var sketch = require('sketch')
+  var sel    = sketch.getSelectedDocument().selectedLayers.layers
+  if (sel.length === 0) { sketch.UI.message('请先选择要命名的图层'); return }
+
+  var cfg = getOrPromptConfig()
+  if (!cfg) return
+
+  var targets = []
+  for (var ri = 0; ri < sel.length; ri++) {
+    collectLayers(sel[ri], targets, 0)
+  }
+  if (targets.length === 0) { sketch.UI.message('没有找到可命名的图层'); return }
+  if (targets.length > 60) { sketch.UI.message('图层过多，请缩小选择范围'); return }
+
+  sketch.UI.message('AI 命名中...')
+  NSRunLoop.currentRunLoop().runMode_beforeDate(NSDefaultRunLoopMode, NSDate.dateWithTimeIntervalSinceNow(0.1))
+
+  var list = []
+  for (var rj = 0; rj < targets.length; rj++) {
+    var t     = targets[rj]
+    var entry = { i: rj, name: t.layer.name, type: t.layer.type }
+    if (t.layer.type === 'Text' && t.layer.text) entry.text = t.layer.text
+    if (t.childInfo) entry.children = t.childInfo
+    list.push(entry)
+  }
+
+  var result = callRename(cfg.apiKey, cfg.model, list)
+  if (!result.ok) { sketch.UI.alert('命名失败', result.error); return }
+
+  var rcount = 0
+  for (var ridx in result.data) {
+    var idx     = parseInt(ridx)
+    var newName = result.data[ridx]
+    if (targets[idx] && newName && newName.length > 0) {
+      targets[idx].layer.name = newName
+      rcount++
+    }
+  }
+  sketch.UI.message('已命名 ' + rcount + ' 个图层')
+}
+
+function collectLayers(layer, targets, depth) {
+  if (depth > 1) return
+  var childInfo = ''
+  if (layer.layers && layer.layers.length > 0) {
+    var parts = []
+    var lmax = layer.layers.length < 8 ? layer.layers.length : 8
+    for (var ci = 0; ci < lmax; ci++) {
+      parts.push(layer.layers[ci].type + ':' + layer.layers[ci].name)
+    }
+    childInfo = parts.join(', ')
+  }
+  targets.push({ layer: layer, childInfo: childInfo })
+  if (layer.layers && depth === 0) {
+    for (var cj = 0; cj < layer.layers.length; cj++) {
+      collectLayers(layer.layers[cj], targets, 1)
+    }
+  }
+}
+
+function callRename(apiKey, model, list) {
+  var sysMsg = 'You are a Sketch layer naming assistant for InShot video editor.'
+    + ' MD3: TopAppBar, NavigationIcon, ActionButton, FAB, IconButton,'
+    + ' IconButton_Play/Undo/Redo/Confirm, Checkbox, SliderThumb, Banner, StatusBar.'
+    + ' Video editor: EditToolbar, Timeline, TimeRuler, TrimHandleLeft/Right, PreviewArea,'
+    + ' VideoFrame, PlaybackControls, RatioList, SplitIndicator, CropGrid.'
+    + ' Toolbar item with text: SpeedItem, VolumeItem, RotateItem.'
+    + ' Shapes: Circle, Rect, Line, Path. PascalCase, no spaces.'
+    + ' Return ONLY a valid JSON object: {"0":"Name","1":"Name",...}'
+    + ' Only rename auto-generated names like Frame N, Group N, Stack N, and Chinese shape names.'
+
+  var userMsg = 'Rename these Sketch layers:\n' + JSON.stringify(list)
+
+  var body = JSON.stringify({
+    model: model,
+    messages: [
+      { role: 'system', content: sysMsg },
+      { role: 'user',   content: userMsg }
+    ],
+    temperature: 0.1
+  })
+
+  var request = NSMutableURLRequest.requestWithURL(NSURL.URLWithString(DOUBAO_URL))
+  request.setHTTPMethod('POST')
+  request.setValue_forHTTPHeaderField('application/json', 'Content-Type')
+  request.setValue_forHTTPHeaderField('Bearer ' + apiKey, 'Authorization')
+  request.setTimeoutInterval(30)
+  request.setHTTPBody(NSString.stringWithString(body).dataUsingEncoding(NSUTF8StringEncoding))
+
+  var respPtr = MOPointer.alloc().init()
+  var errPtr  = MOPointer.alloc().init()
+  var data    = NSURLConnection.sendSynchronousRequest_returningResponse_error(request, respPtr, errPtr)
+
+  if (!data) {
+    var errMsg = errPtr.value() ? (errPtr.value().localizedDescription() + '') : '无法连接到服务器'
+    return { ok: false, error: errMsg }
+  }
+
+  var raw = (NSString.alloc().initWithData_encoding(data, NSUTF8StringEncoding) || '') + ''
+  var parsed
+  try { parsed = JSON.parse(raw) } catch(e) {
+    return { ok: false, error: '响应解析失败：' + raw.slice(0, 200) }
+  }
+
+  if (parsed.error) {
+    return { ok: false, error: 'API 错误：' + (parsed.error.message || JSON.stringify(parsed.error)) }
+  }
+  if (!parsed.choices || !parsed.choices[0]) {
+    return { ok: false, error: '响应格式异常：' + raw.slice(0, 300) }
+  }
+
+  var content = (parsed.choices[0].message.content || '') + ''
+  content = content.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim()
+
+  try {
+    return { ok: true, data: JSON.parse(content) }
+  } catch(e) {
+    return { ok: false, error: '结果解析失败：' + content.slice(0, 200) }
   }
 }
