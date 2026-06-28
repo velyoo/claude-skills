@@ -1,7 +1,7 @@
 {
   "name": "Translate UI",
   "identifier": "com.inshot.translate-ui",
-  "version": "1.2",
+  "version": "1.4",
   "description": "一键汉化 / 多语言压测 / 图层自动命名（豆包 API）",
   "compatibleVersion": "70",
   "commands": [
