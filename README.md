@@ -76,9 +76,10 @@
 将设计稿英文文本一键翻译为中文，或切换为其他语言检查多语言布局适配性。基于豆包 API，无需代理。
 
 **安装**
-1. 下载 `sketch-translate-ui` 文件夹
-2. 将其重命名为 `TranslateUI.sketchplugin`（注意后缀）
-3. 双击安装，或拖入 `~/Library/Application Support/com.bohemiancoding.sketch3/Plugins/`
+
+**[⬇️ 下载 TranslateUI.sketchplugin.zip](https://github.com/velyoo/claude-skills/releases/latest)**
+
+1. 下载上方 zip，解压后双击 `TranslateUI.sketchplugin` 安装
 
 **使用**
 - 选中画板，菜单 **Plugins → Translate UI → 汉化选中画板**（`Ctrl+Shift+T`）
