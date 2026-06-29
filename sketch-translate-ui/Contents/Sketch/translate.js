@@ -343,6 +343,15 @@ function findOverflow(sel) {
 
 function setTranslating(on) {
   for (var i = 0; i < _panelBtns.length; i++) _panelBtns[i].setEnabled_(!on)
+  if (_transBgLayer) {
+    var col = on
+      ? NSColor.colorWithRed_green_blue_alpha_(0.6, 0.6, 0.6, 1.0).CGColor()
+      : NSColor.colorWithRed_green_blue_alpha_(0.102, 0.451, 0.910, 1.0).CGColor()
+    _transBgLayer.setBackgroundColor_(col)
+  }
+  if (_transTextLayer) {
+    _transTextLayer.setString_(on ? '翻译中…' : '翻译')
+  }
   if (_panelSpinner) {
     _panelSpinner.setHidden_(on ? false : true)
     if (on) _panelSpinner.startAnimation_(null)
@@ -413,6 +422,8 @@ var _panelCOS           = null
 var _panelBtns          = []
 var _panelSpinner       = null
 var _panelRestoreBtn    = null
+var _transBgLayer       = null
+var _transTextLayer     = null
 var _stressDlg          = null
 var _stressCOS          = null
 var _hasRunTranslation  = false
@@ -548,6 +559,8 @@ var onShowPanel = function(context) {
     transTextL.setContentsScale_(NSScreen.mainScreen().backingScaleFactor())
     transTextL.setFrame_(NSMakeRect(0, 9, W - 24, 16))
     transBgL.addSublayer_(transTextL)
+    _transBgLayer   = transBgL
+    _transTextLayer = transTextL
     transCont.addSubview_(transBg)
     var transBtn = NSButton.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
     transBtn.setTitle_('')
