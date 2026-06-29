@@ -71,7 +71,7 @@
 
 ---
 
-### sketch-translate-ui — Sketch 一键翻译插件
+### sketch-translate-ui — Sketch 一键翻译插件（Babel）
 
 将设计稿英文文本一键翻译为中文，或切换为其他语言检查多语言布局适配性。基于豆包 API，无需代理。
 
@@ -82,9 +82,10 @@
 1. 下载上方 zip，解压后双击 `TranslateUI.sketchplugin` 安装
 
 **使用**
-- 选中画板，菜单 **Plugins → Translate UI → 汉化选中画板**（`Ctrl+Shift+T`）
+- 选中画板，菜单 **Plugins → Babel → 汉化选中画板**（`Ctrl+Shift+T`）
 - 首次运行填入豆包 API Key 和 Endpoint ID，之后自动记住
-- 多语言压测：`Ctrl+Shift+L`，选目标语言（德/俄/西/葡/印尼），检查文本膨胀后的布局溢出
+- 汉化完成后出现**还原英文**按钮，可一键还原；原文写入图层 userData，关闭文档重新打开后仍可还原
+- 多语言压测：`Ctrl+Shift+L`，从 35 种语言中选择目标语言，翻译后自动选中溢出文字图层
 
 **获取 API Key（首次需要完成以下前置步骤）**
 
