@@ -27,6 +27,7 @@ var onRun = function(context) {
   setTranslating(false)
   if (!result.ok) { sketch.UI.alert('翻译失败', result.error); return }
   var count = applyTranslations(col.textMap, col.texts, result.data)
+  showRestorePanelIfNeeded()
   _hasRunTranslation = true
   sketch.UI.message('✅ 已汉化 ' + count + ' 处（共识别 ' + col.texts.length + ' 条唯一文本）')
 }
@@ -34,174 +35,73 @@ var onRun = function(context) {
 // ─── 多语言适配压测 ────────────────────────────────────────────────────────────
 
 var STRESS_LANGS = [
-  { label: '🇩🇪 德语  German        (+30~40%)', name: 'German' },
-  { label: '🇷🇺 俄语  Russian       (+25~35%)', name: 'Russian' },
-  { label: '🇪🇸 西班牙语  Spanish   (+20~30%)', name: 'Spanish (Latin America)' },
-  { label: '🇧🇷 葡萄牙语  Portuguese(+15~25%)', name: 'Brazilian Portuguese' },
-  { label: '🇮🇩 印尼语  Indonesian  (+10~20%)', name: 'Indonesian' },
-  { label: '✏️  自定义语言…',                   name: null },
+  { label: '🇨🇳  简体中文',          name: 'Simplified Chinese' },
+  { label: '🇩🇪  德语   (+30~40%)',  name: 'German' },
+  { label: '🇷🇺  俄语   (+25~35%)',  name: 'Russian' },
+  { label: '🇪🇸  西班牙语 (+20~30%)', name: 'Spanish (Latin America)' },
+  { label: '🇧🇷  葡萄牙语 (+15~25%)', name: 'Brazilian Portuguese' },
+  { label: '🇮🇩  印尼语  (+10~20%)', name: 'Indonesian' },
 ]
 
+// 自定义下拉列表：{ zh: 显示名, en: 传给 API 的英文名 }
+var LANG_LIST = [
+  { zh: '德语',       en: 'German' },
+  { zh: '俄语',       en: 'Russian' },
+  { zh: '西班牙语',   en: 'Spanish (Latin America)' },
+  { zh: '葡萄牙语',   en: 'Brazilian Portuguese' },
+  { zh: '印尼语',     en: 'Indonesian' },
+  { zh: '印地语',     en: 'Hindi' },
+  { zh: '泰语',       en: 'Thai' },
+  { zh: '越南语',     en: 'Vietnamese' },
+  { zh: '马来语',     en: 'Malay' },
+  { zh: '日语',       en: 'Japanese' },
+  { zh: '韩语',       en: 'Korean' },
+  { zh: '法语',       en: 'French' },
+  { zh: '意大利语',   en: 'Italian' },
+  { zh: '荷兰语',     en: 'Dutch' },
+  { zh: '波兰语',     en: 'Polish' },
+  { zh: '土耳其语',   en: 'Turkish' },
+  { zh: '乌克兰语',   en: 'Ukrainian' },
+  { zh: '阿拉伯语',   en: 'Arabic' },
+  { zh: '希伯来语',   en: 'Hebrew' },
+  { zh: '菲律宾语',   en: 'Filipino' },
+  { zh: '缅甸语',     en: 'Burmese' },
+  { zh: '高棉语',     en: 'Khmer' },
+  { zh: '波斯语',     en: 'Persian' },
+  { zh: '乌尔都语',   en: 'Urdu' },
+  { zh: '孟加拉语',   en: 'Bengali' },
+  { zh: '希腊语',     en: 'Greek' },
+  { zh: '瑞典语',     en: 'Swedish' },
+  { zh: '挪威语',     en: 'Norwegian' },
+  { zh: '丹麦语',     en: 'Danish' },
+  { zh: '芬兰语',     en: 'Finnish' },
+  { zh: '捷克语',     en: 'Czech' },
+  { zh: '罗马尼亚语', en: 'Romanian' },
+  { zh: '匈牙利语',   en: 'Hungarian' },
+  { zh: '斯瓦希里语', en: 'Swahili' },
+]
+
+// 别名映射，处理手动输入的各种写法
 var LANG_MAP = {
   '中文': 'Simplified Chinese', '简中': 'Simplified Chinese', '简体中文': 'Simplified Chinese',
   '繁中': 'Traditional Chinese', '繁体中文': 'Traditional Chinese',
   '英语': 'English', '英文': 'English',
-  '德语': 'German',
-  '俄语': 'Russian',
-  '西班牙语': 'Spanish (Latin America)',
-  '葡萄牙语': 'Brazilian Portuguese', '巴西葡萄牙语': 'Brazilian Portuguese',
-  '印尼语': 'Indonesian', '印度尼西亚语': 'Indonesian',
-  '印地语': 'Hindi', '北印度语': 'Hindi', '印度语': 'Hindi',
-  '泰语': 'Thai',
-  '日语': 'Japanese', '日文': 'Japanese',
-  '韩语': 'Korean', '朝鲜语': 'Korean', '韩文': 'Korean',
-  '法语': 'French', '法文': 'French',
-  '意大利语': 'Italian',
-  '荷兰语': 'Dutch',
-  '波兰语': 'Polish',
-  '土耳其语': 'Turkish',
-  '越南语': 'Vietnamese',
-  '马来语': 'Malay',
-  '菲律宾语': 'Filipino', '他加禄语': 'Tagalog',
-  '阿拉伯语': 'Arabic',
-  '希伯来语': 'Hebrew',
-  '希腊语': 'Greek',
-  '乌克兰语': 'Ukrainian',
-  '瑞典语': 'Swedish',
-  '挪威语': 'Norwegian',
-  '丹麦语': 'Danish',
-  '芬兰语': 'Finnish',
-  '捷克语': 'Czech',
-  '罗马尼亚语': 'Romanian',
-  '匈牙利语': 'Hungarian',
-  '斯瓦希里语': 'Swahili',
-  '缅甸语': 'Burmese',
-  '高棉语': 'Khmer', '柬埔寨语': 'Khmer',
-  '波斯语': 'Persian', '法尔西语': 'Persian',
-  '乌尔都语': 'Urdu',
-  '孟加拉语': 'Bengali',
+  '印度语': 'Hindi', '北印度语': 'Hindi',
+  '日文': 'Japanese', '韩文': 'Korean', '朝鲜语': 'Korean',
+  '法文': 'French', '巴西葡萄牙语': 'Brazilian Portuguese',
+  '印度尼西亚语': 'Indonesian', '他加禄语': 'Tagalog',
+  '柬埔寨语': 'Khmer', '法尔西语': 'Persian',
 }
 
 function resolveLanguage(input) {
   var s = input.trim()
-  return LANG_MAP[s] || s  // 查不到就原样透传（英文输入直接用）
+  for (var i = 0; i < LANG_LIST.length; i++) {
+    if (LANG_LIST[i].zh === s) return LANG_LIST[i].en
+  }
+  return LANG_MAP[s] || s  // 别名查不到就原样透传（英文输入直接用）
 }
 
-var onStressTest = function(context) {
-  var sketch = require('sketch')
-  var sel    = sketch.getSelectedDocument().selectedLayers.layers
-  if (sel.length === 0) { sketch.UI.message('请先选择画板或图层'); return }
-
-  var cfg = getOrPromptConfig()
-  if (!cfg) return
-
-  if (!_panel || !_panel.isVisible()) {
-    var coscript = COScript.currentCOScript()
-    coscript.setShouldKeepAround_(true)
-    _stressCOS = coscript
-  }
-
-  var W = 340, H = 300
-  var dlg = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
-    NSMakeRect(0, 0, W, H), 3, 2, false
-  )
-  dlg.setTitle_('切换语言预览')
-  if (_panel && _panel.isVisible()) {
-    var pf = _panel.frame()
-    var dlgY = pf.origin.y + pf.size.height - H
-    var screenFrame = NSScreen.mainScreen().visibleFrame()
-    if (dlgY < screenFrame.origin.y) dlgY = screenFrame.origin.y
-    dlg.setFrameOrigin_(NSMakePoint(pf.origin.x + pf.size.width + 8, dlgY))
-  } else {
-    dlg.center()
-  }
-  dlg.setReleasedWhenClosed_(false)
-  dlg.setFloatingPanel_(true)
-
-  var cv = dlg.contentView()
-
-  var desc = NSTextField.alloc().initWithFrame_(NSMakeRect(16, H - 48, W - 32, 28))
-  desc.setStringValue_('选择目标语言，检查布局在文本膨胀下的适配情况')
-  desc.setBezeled_(false)
-  desc.setDrawsBackground_(false)
-  desc.setEditable_(false)
-  desc.setSelectable_(false)
-  cv.addSubview_(desc)
-
-  var cellProto = NSButtonCell.alloc().init()
-  cellProto.setButtonType_(4) // NSButtonTypeRadio
-  var matrixH = STRESS_LANGS.length * 26  // 6 * 26 = 156
-  var matrix = NSMatrix.alloc().initWithFrame_mode_prototype_numberOfRows_numberOfColumns_(
-    NSMakeRect(16, H - 60 - matrixH, W - 32, matrixH),
-    0, // NSRadioModeMatrix
-    cellProto,
-    STRESS_LANGS.length,
-    1
-  )
-  matrix.setCellSize_(NSMakeSize(W - 32, 26))
-  matrix.setIntercellSpacing_(NSMakeSize(0, 0))
-  for (var li = 0; li < STRESS_LANGS.length; li++) {
-    matrix.cellAtRow_column_(li, 0).setTitle_(STRESS_LANGS[li].label)
-  }
-  matrix.selectCellAtRow_column_(0, 0)
-  cv.addSubview_(matrix)
-
-  var customFld = NSTextField.alloc().initWithFrame_(NSMakeRect(16, 52, W - 32, 24))
-  customFld.setPlaceholderString_('自定义语言（英文名），如 Thai、Arabic、Japanese…')
-  cv.addSubview_(customFld)
-
-  var cancelBtn = NSButton.alloc().initWithFrame_(NSMakeRect(W - 212, 16, 80, 28))
-  cancelBtn.setTitle_('取消')
-  cancelBtn.setBezelStyle_(1)
-  cancelBtn.setCOSJSTargetFunction(function() { dlg.orderOut_(null) })
-  cancelBtn.setAction_('callAction:')
-  cv.addSubview_(cancelBtn)
-
-  var okBtn = NSButton.alloc().initWithFrame_(NSMakeRect(W - 124, 16, 108, 28))
-  okBtn.setTitle_('翻译')
-  okBtn.setBezelStyle_(1)
-  okBtn.setCOSJSTargetFunction(function() {
-    dlg.orderOut_(null)
-    var row  = matrix.selectedRow()
-    var lang
-    if (row === STRESS_LANGS.length - 1) {
-      var customName = (customFld.stringValue() + '').trim()
-      if (!customName) { sketch.UI.message('请在输入框填写目标语言名称'); return }
-      lang = { label: customName, name: resolveLanguage(customName) }
-    } else {
-      lang = STRESS_LANGS[row]
-    }
-    var col  = collectTextsForStress(sel)
-    if (col.texts.length === 0) { sketch.UI.message('未找到英文文字（请先运行汉化存入原文）'); return }
-    setTranslating(true)
-    NSRunLoop.currentRunLoop().runMode_beforeDate(NSDefaultRunLoopMode, NSDate.dateWithTimeIntervalSinceNow(0.05))
-    var result = callDoubao(cfg.apiKey, cfg.model, col.texts, lang.name)
-    setTranslating(false)
-    if (!result.ok) { sketch.UI.alert('翻译失败', result.error); return }
-    var count    = applyTranslations(col.textMap, col.texts, result.data)
-    var overflow = findOverflow(sel)
-    if (overflow.length > 0) {
-      try { for (var oi = 0; oi < overflow.length; oi++) overflow[oi].selected = true } catch(e) {}
-      sketch.UI.message('✅ ' + lang.name + ' · ' + count + ' 处已翻译 · ⚠️ ' + overflow.length + ' 处溢出已选中')
-    } else {
-      sketch.UI.message('✅ 已翻译为 ' + lang.name + '，共 ' + count + ' 处 — 无溢出 ✓')
-    }
-  })
-  okBtn.setAction_('callAction:')
-  cv.addSubview_(okBtn)
-
-  var dlgCloseBtn = dlg.standardWindowButton_(0)
-  if (dlgCloseBtn) {
-    dlgCloseBtn.setCOSJSTargetFunction(function() {
-      _stressDlg = null
-      dlg.orderOut_(null)
-    })
-    dlgCloseBtn.setAction_('callAction:')
-  }
-
-  dlg.makeKeyAndOrderFront_(null)
-  _stressDlg = dlg
-}
+var onStressTest = function(context) { onShowPanel(context) }
 
 // ─── 还原英文原文 ──────────────────────────────────────────────────────────────
 
@@ -512,9 +412,30 @@ var _panel              = null
 var _panelCOS           = null
 var _panelBtns          = []
 var _panelSpinner       = null
+var _panelRestoreBtn    = null
 var _stressDlg          = null
 var _stressCOS          = null
-var _hasRunTranslation  = false  // 汉化成功一次后为 true，才显示"还原英文"按钮
+var _hasRunTranslation  = false
+
+// 首次翻译成功后调用：扩展面板高度并显示还原按钮
+function showRestorePanelIfNeeded() {
+  if (!_panel || _hasRunTranslation || !_panelRestoreBtn) return
+  var DELTA = 38  // 34px 按钮 + 4px 间距
+  var cv    = _panel.contentView()
+  var subs  = cv.subviews()
+  for (var i = 0; i < subs.count(); i++) {
+    var sv = subs.objectAtIndex_(i)
+    if (sv === _panelRestoreBtn) continue
+    var sf = sv.frame()
+    sv.setFrame_(NSMakeRect(sf.origin.x, sf.origin.y + DELTA, sf.size.width, sf.size.height))
+  }
+  var wf = _panel.frame()
+  _panel.setFrame_display_animate_(
+    NSMakeRect(wf.origin.x, wf.origin.y - DELTA, wf.size.width, wf.size.height + DELTA),
+    true, false
+  )
+  _panelRestoreBtn.setHidden_(false)
+}
 
 var onShowPanel = function(context) {
   try {
@@ -523,64 +444,204 @@ var onShowPanel = function(context) {
       return
     }
 
-    // 释放上一次遗留的 COScript（此处是新调用上下文，释放安全）
     if (_panelCOS) { _panelCOS.setShouldKeepAround_(false); _panelCOS = null }
-
     var coscript = COScript.currentCOScript()
     coscript.setShouldKeepAround_(true)
     _panelCOS = coscript
 
-    var W = 230, H = _hasRunTranslation ? 170 : 134
-    // NSWindowStyleMaskTitled=1, NSWindowStyleMaskClosable=2, NSBackingStoreBuffered=2
+    // ── 布局常量（从下往上）──
+    var W           = 250
+    var COMBO_DELTA = 34   // 26px combobox + 8px gap，展开"更多语言"时增加的高度
+    var restoreBtnY = 12
+    var transBtnY   = _hasRunTranslation ? (restoreBtnY + 34 + 4) : restoreBtnY
+    var matrixY     = transBtnY + 34 + 12
+    var matrixH     = (STRESS_LANGS.length + 1) * 26
+    var descH       = 32
+    var H           = matrixY + matrixH + 8 + descH + 12  // 顶部：desc + padding
+
     var win = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
-      NSMakeRect(0, 0, W, H),
-      1 | 2,
-      2,
-      false
+      NSMakeRect(0, 0, W, H), 1|2, 2, false
     )
-    win.setTitle_('Translate UI')
+    win.setTitle_('Babel')
     win.setFloatingPanel_(true)
+    win.setBecomesKeyOnlyIfNeeded_(true)
     win.center()
     win.setReleasedWhenClosed_(false)
 
-    var cv   = win.contentView()
-    var btns = [
-      ['切换语言预览…', function() { onStressTest({}) }],
-      ['汉化选中画板',  function() { onRun({}) }],
-    ]
-    if (_hasRunTranslation) {
-      btns.push(['还原英文', function() { onRestoreEnglish({}) }])
-    }
-    _panelBtns = []
-    var y = H - 52
-    for (var i = 0; i < btns.length; i++) {
-      var btn = NSButton.alloc().initWithFrame_(NSMakeRect(16, y, W - 32, 28))
-      btn.setTitle_(btns[i][0])
-      btn.setBezelStyle_(1)
-      btn.setCOSJSTargetFunction(btns[i][1])
-      btn.setAction_('callAction:')
-      cv.addSubview_(btn)
-      _panelBtns.push(btn)
-      y -= 36
-    }
+    var cv = win.contentView()
 
-    var spinner = NSProgressIndicator.alloc().initWithFrame_(NSMakeRect(W / 2 - 8, 14, 16, 16))
-    spinner.setStyle_(0)  // NSProgressIndicatorStyleSpinning
+    // ── 说明文案 ──
+    var descY = matrixY + matrixH + 8
+    var desc = NSTextField.alloc().initWithFrame_(NSMakeRect(12, descY, W - 24, descH))
+    desc.setStringValue_('选择目标语言，检查布局在文本膨胀下的适配情况')
+    desc.setFont_(NSFont.systemFontOfSize_(11))
+    desc.setBezeled_(false)
+    desc.setDrawsBackground_(false)
+    desc.setEditable_(false)
+    desc.setSelectable_(false)
+    desc.setTextColor_(NSColor.secondaryLabelColor())
+    cv.addSubview_(desc)
+
+    // ── 语言单选列表 ──
+    var cellProto = NSButtonCell.alloc().init()
+    cellProto.setButtonType_(4)
+    var totalRows = STRESS_LANGS.length + 1
+    var matrix = NSMatrix.alloc().initWithFrame_mode_prototype_numberOfRows_numberOfColumns_(
+      NSMakeRect(12, matrixY, W - 24, matrixH), 0, cellProto, totalRows, 1
+    )
+    matrix.setCellSize_(NSMakeSize(W - 24, 26))
+    matrix.setIntercellSpacing_(NSMakeSize(0, 0))
+    for (var li = 0; li < STRESS_LANGS.length; li++) {
+      matrix.cellAtRow_column_(li, 0).setTitle_(STRESS_LANGS[li].label)
+    }
+    matrix.cellAtRow_column_(STRESS_LANGS.length, 0).setTitle_('🌐  更多语言…')
+    matrix.selectCellAtRow_column_(0, 0)
+    cv.addSubview_(matrix)
+
+    // ── 更多语言下拉框（默认隐藏，选"更多语言"时展开）──
+    var comboY = transBtnY + 34 + 8  // 紧凑 matrixY 与 transBtn 之间
+    var zhNames = []
+    for (var ci = 0; ci < LANG_LIST.length; ci++) zhNames.push(LANG_LIST[ci].zh)
+    var combo = NSComboBox.alloc().initWithFrame_(NSMakeRect(12, comboY, W - 24, 26))
+    combo.addItemsWithObjectValues_(zhNames)
+    combo.selectItemAtIndex_(0)
+    combo.setEditable_(true)
+    combo.setCompletes_(true)
+    combo.setHidden_(true)
+    cv.addSubview_(combo)
+
+    // matrix 选择变化时展开/收起 combo
+    var comboExpanded = false
+    matrix.setCOSJSTargetFunction(function() {
+      var wantExpand = matrix.selectedRow() === STRESS_LANGS.length
+      if (wantExpand === comboExpanded) return
+      var mf = matrix.frame()
+      var wf = _panel.frame()
+      if (wantExpand) {
+        matrix.setFrame_(NSMakeRect(mf.origin.x, mf.origin.y + COMBO_DELTA, mf.size.width, mf.size.height))
+        desc.setFrame_(NSMakeRect(desc.frame().origin.x, desc.frame().origin.y + COMBO_DELTA, desc.frame().size.width, desc.frame().size.height))
+        combo.setHidden_(false)
+        _panel.setFrame_display_animate_(NSMakeRect(wf.origin.x, wf.origin.y, wf.size.width, wf.size.height + COMBO_DELTA), true, false)
+      } else {
+        matrix.setFrame_(NSMakeRect(mf.origin.x, mf.origin.y - COMBO_DELTA, mf.size.width, mf.size.height))
+        desc.setFrame_(NSMakeRect(desc.frame().origin.x, desc.frame().origin.y - COMBO_DELTA, desc.frame().size.width, desc.frame().size.height))
+        combo.setHidden_(true)
+        _panel.setFrame_display_animate_(NSMakeRect(wf.origin.x, wf.origin.y, wf.size.width, wf.size.height - COMBO_DELTA), true, false)
+      }
+      comboExpanded = wantExpand
+    })
+    matrix.setAction_('callAction:')
+
+    // ── 翻译按钮（蓝色圆角矩形 + 白字）──
+    var transCont = NSView.alloc().initWithFrame_(NSMakeRect(12, transBtnY, W - 24, 34))
+    var transBg = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
+    transBg.setWantsLayer_(true)
+    var transBgL = transBg.layer()
+    transBgL.setBackgroundColor_(NSColor.colorWithRed_green_blue_alpha_(0.102, 0.451, 0.910, 1.0).CGColor())
+    transBgL.setCornerRadius_(6)
+    var transTextL = CATextLayer.layer()
+    transTextL.setString_('翻译')
+    transTextL.setFont_(NSFont.systemFontOfSize_(13))
+    transTextL.setFontSize_(13)
+    transTextL.setAlignmentMode_('center')
+    transTextL.setForegroundColor_(NSColor.whiteColor().CGColor())
+    transTextL.setContentsScale_(NSScreen.mainScreen().backingScaleFactor())
+    transTextL.setFrame_(NSMakeRect(0, 9, W - 24, 16))
+    transBgL.addSublayer_(transTextL)
+    transCont.addSubview_(transBg)
+    var transBtn = NSButton.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
+    transBtn.setTitle_('')
+    transBtn.setBordered_(false)
+    transBtn.setTransparent_(true)
+    transBtn.setKeyEquivalent_('\r')
+    transBtn.setCOSJSTargetFunction(function() {
+      var sketch = require('sketch')
+      var sel    = sketch.getSelectedDocument().selectedLayers.layers
+      if (sel.length === 0) { sketch.UI.message('请先选择画板或图层'); return }
+      var cfg = getOrPromptConfig()
+      if (!cfg) return
+      var row = matrix.selectedRow()
+      var enName, label
+      if (row < STRESS_LANGS.length) {
+        enName = STRESS_LANGS[row].name
+        label  = STRESS_LANGS[row].label
+      } else {
+        var input = (combo.stringValue() + '').trim()
+        if (!input) { sketch.UI.message('请从下拉列表选择语言'); return }
+        enName = resolveLanguage(input)
+        label  = input
+      }
+      var col = collectTextsForStress(sel)
+      if (col.texts.length === 0) col = collectTexts(sel)
+      if (col.texts.length === 0) { sketch.UI.message('未找到英文文字'); return }
+      saveOriginals(col.textMap)
+      setTranslating(true)
+      NSRunLoop.currentRunLoop().runMode_beforeDate(NSDefaultRunLoopMode, NSDate.dateWithTimeIntervalSinceNow(0.05))
+      var result = callDoubao(cfg.apiKey, cfg.model, col.texts, enName)
+      setTranslating(false)
+      if (!result.ok) { sketch.UI.alert('翻译失败', result.error); return }
+      var count    = applyTranslations(col.textMap, col.texts, result.data)
+      showRestorePanelIfNeeded()
+      _hasRunTranslation = true
+      var overflow = findOverflow(sel)
+      if (overflow.length > 0) {
+        try { for (var oi = 0; oi < overflow.length; oi++) overflow[oi].selected = true } catch(e) {}
+        sketch.UI.message('✅ ' + label + ' · ' + count + ' 处已翻译 · ⚠️ ' + overflow.length + ' 处溢出已选中')
+      } else {
+        sketch.UI.message('✅ 已翻译为 ' + label + '，共 ' + count + ' 处')
+      }
+      var mainWin = NSApplication.sharedApplication().mainWindow()
+      if (mainWin) mainWin.makeKeyWindow()
+    })
+    transBtn.setAction_('callAction:')
+    transCont.addSubview_(transBtn)
+    cv.addSubview_(transCont)
+    _panelBtns = [transBtn]
+
+    // ── 还原英文按钮（灰色圆角矩形，翻译后才显示）──
+    var restoreCont = NSView.alloc().initWithFrame_(NSMakeRect(12, restoreBtnY, W - 24, 34))
+    restoreCont.setHidden_(!_hasRunTranslation)
+    var restoreBg = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
+    restoreBg.setWantsLayer_(true)
+    var restoreBgL = restoreBg.layer()
+    restoreBgL.setBackgroundColor_(NSColor.colorWithRed_green_blue_alpha_(0.92, 0.92, 0.92, 1.0).CGColor())
+    restoreBgL.setCornerRadius_(6)
+    var restoreTextL = CATextLayer.layer()
+    restoreTextL.setString_('还原英文')
+    restoreTextL.setFont_(NSFont.systemFontOfSize_(13))
+    restoreTextL.setFontSize_(13)
+    restoreTextL.setAlignmentMode_('center')
+    restoreTextL.setForegroundColor_(NSColor.colorWithRed_green_blue_alpha_(0.2, 0.2, 0.2, 1.0).CGColor())
+    restoreTextL.setContentsScale_(NSScreen.mainScreen().backingScaleFactor())
+    restoreTextL.setFrame_(NSMakeRect(0, 9, W - 24, 16))
+    restoreBgL.addSublayer_(restoreTextL)
+    restoreCont.addSubview_(restoreBg)
+    var restoreBtn = NSButton.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
+    restoreBtn.setTitle_('')
+    restoreBtn.setBordered_(false)
+    restoreBtn.setTransparent_(true)
+    restoreBtn.setCOSJSTargetFunction(function() { onRestoreEnglish({}) })
+    restoreBtn.setAction_('callAction:')
+    restoreCont.addSubview_(restoreBtn)
+    cv.addSubview_(restoreCont)
+    _panelRestoreBtn = restoreCont
+    _panelBtns.push(restoreBtn)
+
+    // ── 进度指示器 ──
+    var spinner = NSProgressIndicator.alloc().initWithFrame_(
+      NSMakeRect(W / 2 - 8, transBtnY + 9, 16, 16)
+    )
+    spinner.setStyle_(0)
     spinner.setIndeterminate_(true)
     spinner.setHidden_(true)
     cv.addSubview_(spinner)
     _panelSpinner = spinner
 
-    // 拦截系统关闭按钮，用 orderOut_ 隐藏而非 close，避免 notification block crash
-    var closeBtn = win.standardWindowButton_(0)  // NSWindowCloseButton = 0
+    var closeBtn = win.standardWindowButton_(0)
     if (closeBtn) {
       closeBtn.setCOSJSTargetFunction(function() {
-        _panel = null
-        _panelBtns = []
-        _panelSpinner = null
+        _panel = null; _panelBtns = []; _panelSpinner = null
         win.orderOut_(null)
-        // 不在此处释放 _panelCOS：在自身执行栈里 setShouldKeepAround_(false) 会立即回收上下文导致 crash
-        // 由下次 onShowPanel 调用（新上下文）安全释放
       })
       closeBtn.setAction_('callAction:')
     }

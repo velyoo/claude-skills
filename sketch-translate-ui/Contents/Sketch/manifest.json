@@ -1,5 +1,5 @@
 {
-  "name": "Translate UI",
+  "name": "Babel",
   "identifier": "com.inshot.translate-ui",
   "version": "1.0",
   "description": "切换语言预览 / 汉化 / 还原英文（豆包 API）",
@@ -39,7 +39,7 @@
     }
   ],
   "menu": {
-    "title": "Translate UI",
+    "title": "Babel",
     "items": ["show-panel", "-", "stress-test", "translate", "restore-english", "-", "reset-config"]
   }
 }
