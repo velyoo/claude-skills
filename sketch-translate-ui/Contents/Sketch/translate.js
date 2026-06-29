@@ -431,7 +431,7 @@ var _hasRunTranslation  = false
 // 首次翻译成功后调用：扩展面板高度并显示还原按钮
 function showRestorePanelIfNeeded() {
   if (!_panel || _hasRunTranslation || !_panelRestoreBtn) return
-  var DELTA = 38  // 34px 按钮 + 4px 间距
+  var DELTA = 40  // 32px 按钮 + 8px 间距
   var cv    = _panel.contentView()
   var subs  = cv.subviews()
   for (var i = 0; i < subs.count(); i++) {
@@ -463,8 +463,8 @@ var onShowPanel = function(context) {
     // ── 布局常量（从下往上）──
     var W           = 250
     var COMBO_DELTA = 34   // 26px combobox + 8px gap，展开"更多语言"时增加的高度
-    var restoreBtnY = 12
-    var transBtnY   = _hasRunTranslation ? (restoreBtnY + 34 + 4) : restoreBtnY
+    var restoreBtnY = 20
+    var transBtnY   = _hasRunTranslation ? (restoreBtnY + 32 + 8) : restoreBtnY
     var matrixY     = transBtnY + 34 + 12
     var matrixH     = (STRESS_LANGS.length + 1) * 26
     var descH       = 32
@@ -544,8 +544,8 @@ var onShowPanel = function(context) {
     matrix.setAction_('callAction:')
 
     // ── 翻译按钮（蓝色圆角矩形 + 白字）──
-    var transCont = NSView.alloc().initWithFrame_(NSMakeRect(12, transBtnY, W - 24, 34))
-    var transBg = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
+    var transCont = NSView.alloc().initWithFrame_(NSMakeRect(12, transBtnY, W - 24, 32))
+    var transBg = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 32))
     transBg.setWantsLayer_(true)
     var transBgL = transBg.layer()
     transBgL.setBackgroundColor_(NSColor.colorWithRed_green_blue_alpha_(0.102, 0.451, 0.910, 1.0).CGColor())
@@ -557,12 +557,12 @@ var onShowPanel = function(context) {
     transTextL.setAlignmentMode_('center')
     transTextL.setForegroundColor_(NSColor.whiteColor().CGColor())
     transTextL.setContentsScale_(NSScreen.mainScreen().backingScaleFactor())
-    transTextL.setFrame_(NSMakeRect(0, 9, W - 24, 16))
+    transTextL.setFrame_(NSMakeRect(0, 8, W - 24, 16))
     transBgL.addSublayer_(transTextL)
     _transBgLayer   = transBgL
     _transTextLayer = transTextL
     transCont.addSubview_(transBg)
-    var transBtn = NSButton.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
+    var transBtn = NSButton.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 32))
     transBtn.setTitle_('')
     transBtn.setBordered_(false)
     transBtn.setTransparent_(true)
@@ -612,9 +612,9 @@ var onShowPanel = function(context) {
     _panelBtns = [transBtn]
 
     // ── 还原英文按钮（灰色圆角矩形，翻译后才显示）──
-    var restoreCont = NSView.alloc().initWithFrame_(NSMakeRect(12, restoreBtnY, W - 24, 34))
+    var restoreCont = NSView.alloc().initWithFrame_(NSMakeRect(12, restoreBtnY, W - 24, 32))
     restoreCont.setHidden_(!_hasRunTranslation)
-    var restoreBg = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
+    var restoreBg = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 32))
     restoreBg.setWantsLayer_(true)
     var restoreBgL = restoreBg.layer()
     restoreBgL.setBackgroundColor_(NSColor.colorWithRed_green_blue_alpha_(0.92, 0.92, 0.92, 1.0).CGColor())
@@ -626,10 +626,10 @@ var onShowPanel = function(context) {
     restoreTextL.setAlignmentMode_('center')
     restoreTextL.setForegroundColor_(NSColor.colorWithRed_green_blue_alpha_(0.2, 0.2, 0.2, 1.0).CGColor())
     restoreTextL.setContentsScale_(NSScreen.mainScreen().backingScaleFactor())
-    restoreTextL.setFrame_(NSMakeRect(0, 9, W - 24, 16))
+    restoreTextL.setFrame_(NSMakeRect(0, 8, W - 24, 16))
     restoreBgL.addSublayer_(restoreTextL)
     restoreCont.addSubview_(restoreBg)
-    var restoreBtn = NSButton.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 34))
+    var restoreBtn = NSButton.alloc().initWithFrame_(NSMakeRect(0, 0, W - 24, 32))
     restoreBtn.setTitle_('')
     restoreBtn.setBordered_(false)
     restoreBtn.setTransparent_(true)
