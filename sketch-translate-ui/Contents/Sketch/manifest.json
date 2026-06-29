@@ -1,8 +1,8 @@
 {
   "name": "Translate UI",
   "identifier": "com.inshot.translate-ui",
-  "version": "1.4",
-  "description": "一键汉化 / 多语言压测 / 图层自动命名（豆包 API）",
+  "version": "1.0",
+  "description": "切换语言预览 / 汉化 / 还原英文（豆包 API）",
   "compatibleVersion": "70",
   "commands": [
     {
@@ -13,27 +13,33 @@
       "shortcut": "ctrl shift t"
     },
     {
-      "name": "多语言适配压测…",
+      "name": "切换语言预览…",
       "identifier": "stress-test",
       "script": "translate.js",
       "handler": "onStressTest",
       "shortcut": "ctrl shift l"
     },
     {
-      "name": "图层自动命名",
-      "identifier": "rename-layers",
+      "name": "还原英文",
+      "identifier": "restore-english",
       "script": "translate.js",
-      "handler": "onRenameLayer"
+      "handler": "onRestoreEnglish"
     },
     {
       "name": "重置 API 配置",
       "identifier": "reset-config",
       "script": "translate.js",
       "handler": "onResetConfig"
+    },
+    {
+      "name": "显示面板",
+      "identifier": "show-panel",
+      "script": "translate.js",
+      "handler": "onShowPanel"
     }
   ],
   "menu": {
     "title": "Translate UI",
-    "items": ["translate", "stress-test", "rename-layers", "-", "reset-config"]
+    "items": ["show-panel", "-", "stress-test", "translate", "restore-english", "-", "reset-config"]
   }
 }

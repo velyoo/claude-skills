@@ -19,13 +19,15 @@ var onRun = function(context) {
   var col = collectTexts(sel)
   if (col.texts.length === 0) { sketch.UI.message('未找到英文文字'); return }
 
-  sketch.UI.message('翻译中…')
-  NSRunLoop.currentRunLoop().runMode_beforeDate(NSDefaultRunLoopMode, NSDate.dateWithTimeIntervalSinceNow(0.1))
+  saveOriginals(col.textMap)
+  setTranslating(true)
+  NSRunLoop.currentRunLoop().runMode_beforeDate(NSDefaultRunLoopMode, NSDate.dateWithTimeIntervalSinceNow(0.05))
 
   var result = callDoubao(cfg.apiKey, cfg.model, col.texts, 'Simplified Chinese')
+  setTranslating(false)
   if (!result.ok) { sketch.UI.alert('翻译失败', result.error); return }
-
   var count = applyTranslations(col.textMap, col.texts, result.data)
+  _hasRunTranslation = true
   sketch.UI.message('✅ 已汉化 ' + count + ' 处（共识别 ' + col.texts.length + ' 条唯一文本）')
 }
 
@@ -37,7 +39,53 @@ var STRESS_LANGS = [
   { label: '🇪🇸 西班牙语  Spanish   (+20~30%)', name: 'Spanish (Latin America)' },
   { label: '🇧🇷 葡萄牙语  Portuguese(+15~25%)', name: 'Brazilian Portuguese' },
   { label: '🇮🇩 印尼语  Indonesian  (+10~20%)', name: 'Indonesian' },
+  { label: '✏️  自定义语言…',                   name: null },
 ]
+
+var LANG_MAP = {
+  '中文': 'Simplified Chinese', '简中': 'Simplified Chinese', '简体中文': 'Simplified Chinese',
+  '繁中': 'Traditional Chinese', '繁体中文': 'Traditional Chinese',
+  '英语': 'English', '英文': 'English',
+  '德语': 'German',
+  '俄语': 'Russian',
+  '西班牙语': 'Spanish (Latin America)',
+  '葡萄牙语': 'Brazilian Portuguese', '巴西葡萄牙语': 'Brazilian Portuguese',
+  '印尼语': 'Indonesian', '印度尼西亚语': 'Indonesian',
+  '印地语': 'Hindi', '北印度语': 'Hindi', '印度语': 'Hindi',
+  '泰语': 'Thai',
+  '日语': 'Japanese', '日文': 'Japanese',
+  '韩语': 'Korean', '朝鲜语': 'Korean', '韩文': 'Korean',
+  '法语': 'French', '法文': 'French',
+  '意大利语': 'Italian',
+  '荷兰语': 'Dutch',
+  '波兰语': 'Polish',
+  '土耳其语': 'Turkish',
+  '越南语': 'Vietnamese',
+  '马来语': 'Malay',
+  '菲律宾语': 'Filipino', '他加禄语': 'Tagalog',
+  '阿拉伯语': 'Arabic',
+  '希伯来语': 'Hebrew',
+  '希腊语': 'Greek',
+  '乌克兰语': 'Ukrainian',
+  '瑞典语': 'Swedish',
+  '挪威语': 'Norwegian',
+  '丹麦语': 'Danish',
+  '芬兰语': 'Finnish',
+  '捷克语': 'Czech',
+  '罗马尼亚语': 'Romanian',
+  '匈牙利语': 'Hungarian',
+  '斯瓦希里语': 'Swahili',
+  '缅甸语': 'Burmese',
+  '高棉语': 'Khmer', '柬埔寨语': 'Khmer',
+  '波斯语': 'Persian', '法尔西语': 'Persian',
+  '乌尔都语': 'Urdu',
+  '孟加拉语': 'Bengali',
+}
+
+function resolveLanguage(input) {
+  var s = input.trim()
+  return LANG_MAP[s] || s  // 查不到就原样透传（英文输入直接用）
+}
 
 var onStressTest = function(context) {
   var sketch = require('sketch')
@@ -47,31 +95,147 @@ var onStressTest = function(context) {
   var cfg = getOrPromptConfig()
   if (!cfg) return
 
-  var alert = NSAlert.alloc().init()
-  alert.setMessageText('多语言适配压测')
-  alert.setInformativeText('将英文文本翻译为目标语言，检查布局在文本膨胀下的适配情况')
-  alert.addButtonWithTitle('翻译')
-  alert.addButtonWithTitle('取消')
-
-  var popup = NSPopUpButton.alloc().initWithFrame_pullsDown(NSMakeRect(0, 0, 340, 26), false)
-  for (var li = 0; li < STRESS_LANGS.length; li++) {
-    popup.addItemWithTitle(STRESS_LANGS[li].label)
+  if (!_panel || !_panel.isVisible()) {
+    var coscript = COScript.currentCOScript()
+    coscript.setShouldKeepAround_(true)
+    _stressCOS = coscript
   }
-  alert.setAccessoryView(popup)
-  if (alert.runModal() !== NSAlertFirstButtonReturn) return
 
-  var lang = STRESS_LANGS[popup.indexOfSelectedItem()]
-  var col  = collectTexts(sel)
-  if (col.texts.length === 0) { sketch.UI.message('未找到英文文字'); return }
+  var W = 340, H = 300
+  var dlg = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+    NSMakeRect(0, 0, W, H), 3, 2, false
+  )
+  dlg.setTitle_('切换语言预览')
+  if (_panel && _panel.isVisible()) {
+    var pf = _panel.frame()
+    var dlgY = pf.origin.y + pf.size.height - H
+    var screenFrame = NSScreen.mainScreen().visibleFrame()
+    if (dlgY < screenFrame.origin.y) dlgY = screenFrame.origin.y
+    dlg.setFrameOrigin_(NSMakePoint(pf.origin.x + pf.size.width + 8, dlgY))
+  } else {
+    dlg.center()
+  }
+  dlg.setReleasedWhenClosed_(false)
+  dlg.setFloatingPanel_(true)
 
-  sketch.UI.message('翻译为 ' + lang.name + ' 中…')
-  NSRunLoop.currentRunLoop().runMode_beforeDate(NSDefaultRunLoopMode, NSDate.dateWithTimeIntervalSinceNow(0.1))
+  var cv = dlg.contentView()
 
-  var result = callDoubao(cfg.apiKey, cfg.model, col.texts, lang.name)
-  if (!result.ok) { sketch.UI.alert('翻译失败', result.error); return }
+  var desc = NSTextField.alloc().initWithFrame_(NSMakeRect(16, H - 48, W - 32, 28))
+  desc.setStringValue_('选择目标语言，检查布局在文本膨胀下的适配情况')
+  desc.setBezeled_(false)
+  desc.setDrawsBackground_(false)
+  desc.setEditable_(false)
+  desc.setSelectable_(false)
+  cv.addSubview_(desc)
 
-  var count = applyTranslations(col.textMap, col.texts, result.data)
-  sketch.UI.message('✅ 已翻译为 ' + lang.name + '，共 ' + count + ' 处 — 注意检查溢出图层')
+  var cellProto = NSButtonCell.alloc().init()
+  cellProto.setButtonType_(4) // NSButtonTypeRadio
+  var matrixH = STRESS_LANGS.length * 26  // 6 * 26 = 156
+  var matrix = NSMatrix.alloc().initWithFrame_mode_prototype_numberOfRows_numberOfColumns_(
+    NSMakeRect(16, H - 60 - matrixH, W - 32, matrixH),
+    0, // NSRadioModeMatrix
+    cellProto,
+    STRESS_LANGS.length,
+    1
+  )
+  matrix.setCellSize_(NSMakeSize(W - 32, 26))
+  matrix.setIntercellSpacing_(NSMakeSize(0, 0))
+  for (var li = 0; li < STRESS_LANGS.length; li++) {
+    matrix.cellAtRow_column_(li, 0).setTitle_(STRESS_LANGS[li].label)
+  }
+  matrix.selectCellAtRow_column_(0, 0)
+  cv.addSubview_(matrix)
+
+  var customFld = NSTextField.alloc().initWithFrame_(NSMakeRect(16, 52, W - 32, 24))
+  customFld.setPlaceholderString_('自定义语言（英文名），如 Thai、Arabic、Japanese…')
+  cv.addSubview_(customFld)
+
+  var cancelBtn = NSButton.alloc().initWithFrame_(NSMakeRect(W - 212, 16, 80, 28))
+  cancelBtn.setTitle_('取消')
+  cancelBtn.setBezelStyle_(1)
+  cancelBtn.setCOSJSTargetFunction(function() { dlg.orderOut_(null) })
+  cancelBtn.setAction_('callAction:')
+  cv.addSubview_(cancelBtn)
+
+  var okBtn = NSButton.alloc().initWithFrame_(NSMakeRect(W - 124, 16, 108, 28))
+  okBtn.setTitle_('翻译')
+  okBtn.setBezelStyle_(1)
+  okBtn.setCOSJSTargetFunction(function() {
+    dlg.orderOut_(null)
+    var row  = matrix.selectedRow()
+    var lang
+    if (row === STRESS_LANGS.length - 1) {
+      var customName = (customFld.stringValue() + '').trim()
+      if (!customName) { sketch.UI.message('请在输入框填写目标语言名称'); return }
+      lang = { label: customName, name: resolveLanguage(customName) }
+    } else {
+      lang = STRESS_LANGS[row]
+    }
+    var col  = collectTextsForStress(sel)
+    if (col.texts.length === 0) { sketch.UI.message('未找到英文文字（请先运行汉化存入原文）'); return }
+    setTranslating(true)
+    NSRunLoop.currentRunLoop().runMode_beforeDate(NSDefaultRunLoopMode, NSDate.dateWithTimeIntervalSinceNow(0.05))
+    var result = callDoubao(cfg.apiKey, cfg.model, col.texts, lang.name)
+    setTranslating(false)
+    if (!result.ok) { sketch.UI.alert('翻译失败', result.error); return }
+    var count    = applyTranslations(col.textMap, col.texts, result.data)
+    var overflow = findOverflow(sel)
+    if (overflow.length > 0) {
+      try { for (var oi = 0; oi < overflow.length; oi++) overflow[oi].selected = true } catch(e) {}
+      sketch.UI.message('✅ ' + lang.name + ' · ' + count + ' 处已翻译 · ⚠️ ' + overflow.length + ' 处溢出已选中')
+    } else {
+      sketch.UI.message('✅ 已翻译为 ' + lang.name + '，共 ' + count + ' 处 — 无溢出 ✓')
+    }
+  })
+  okBtn.setAction_('callAction:')
+  cv.addSubview_(okBtn)
+
+  var dlgCloseBtn = dlg.standardWindowButton_(0)
+  if (dlgCloseBtn) {
+    dlgCloseBtn.setCOSJSTargetFunction(function() {
+      _stressDlg = null
+      dlg.orderOut_(null)
+    })
+    dlgCloseBtn.setAction_('callAction:')
+  }
+
+  dlg.makeKeyAndOrderFront_(null)
+  _stressDlg = dlg
+}
+
+// ─── 还原英文原文 ──────────────────────────────────────────────────────────────
+
+var onRestoreEnglish = function(context) {
+  var sketch   = require('sketch')
+  var Settings = sketch.Settings
+  var sel      = sketch.getSelectedDocument().selectedLayers.layers
+  if (sel.length === 0) { sketch.UI.message('请先选择画板或图层'); return }
+
+  var count = 0
+  function walk(layer) {
+    if (layer.type === 'SymbolInstance') {
+      var saved = Settings.layerSettingForKey(layer, 'original_en_overrides') || {}
+      var ovs   = layer.overrides || []
+      for (var i = 0; i < ovs.length; i++) {
+        if (ovs[i].property !== 'stringValue') continue
+        var orig = saved[ovs[i].id + '']
+        if (orig) { ovs[i].value = orig; count++ }
+      }
+      return
+    }
+    if (layer.type === 'Text') {
+      var orig = Settings.layerSettingForKey(layer, 'original_en')
+      if (orig) { layer.text = orig; count++ }
+    }
+    if (layer.layers) {
+      var ch = layer.layers
+      for (var j = 0; j < ch.length; j++) walk(ch[j])
+    }
+  }
+  for (var k = 0; k < sel.length; k++) walk(sel[k])
+  sketch.UI.message(count > 0
+    ? ('✅ 已还原 ' + count + ' 处英文原文')
+    : '未找到已保存的原始英文（请先执行汉化）')
 }
 
 // ─── 重置配置 ──────────────────────────────────────────────────────────────────
@@ -133,11 +297,73 @@ function showConfigDialog(curKey, curModel) {
   }
 }
 
-// ─── 公共：收集文字 ────────────────────────────────────────────────────────────
+// ─── 公共：保存原始英文到图层 userData ────────────────────────────────────────
 
-function collectTexts(sel) {
+function saveOriginals(textMap) {
+  var Settings = require('sketch').Settings
+  for (var text in textMap) {
+    var targets = textMap[text]
+    for (var i = 0; i < targets.length; i++) {
+      var t = targets[i]
+      if (t.kind === 'text') {
+        Settings.setLayerSettingForKey(t.layer, 'original_en', text)
+      } else {
+        var saved = Settings.layerSettingForKey(t.layer, 'original_en_overrides') || {}
+        saved[t.oid + ''] = text
+        Settings.setLayerSettingForKey(t.layer, 'original_en_overrides', saved)
+      }
+    }
+  }
+}
+
+// ─── 公共：收集文字（压测用，优先读 userData 原始英文）──────────────────────────
+
+function collectTextsForStress(sel) {
+  var Settings = require('sketch').Settings
   var texts   = []
   var textMap = {}
+
+  function add(key, entry) {
+    if (!textMap[key]) { textMap[key] = []; texts.push(key) }
+    textMap[key].push(entry)
+  }
+
+  function walk(layer) {
+    if (layer.type === 'SymbolInstance') {
+      var overrides = layer.overrides
+      if (overrides) {
+        var saved = Settings.layerSettingForKey(layer, 'original_en_overrides') || {}
+        for (var i = 0; i < overrides.length; i++) {
+          var o = overrides[i]
+          if (o.property !== 'stringValue') continue
+          var key = saved[o.id + ''] || (/[a-zA-Z]/.test(o.value + '') ? (o.value + '') : null)
+          if (key) add(key, { kind: 'override', layer: layer, oid: o.id })
+        }
+      }
+      return
+    }
+    if (layer.type === 'Text' && layer.text) {
+      var savedEn = Settings.layerSettingForKey(layer, 'original_en')
+      var key = savedEn || (/[a-zA-Z]/.test(layer.text + '') ? (layer.text + '') : null)
+      if (key) add(key, { kind: 'text', layer: layer })
+    }
+    if (layer.layers) {
+      var ch = layer.layers
+      for (var j = 0; j < ch.length; j++) walk(ch[j])
+    }
+  }
+
+  for (var k = 0; k < sel.length; k++) walk(sel[k])
+  return { texts: texts, textMap: textMap }
+}
+
+// ─── 公共：收集文字 ────────────────────────────────────────────────────────────
+
+function collectTexts(sel, anyLang) {
+  var texts   = []
+  var textMap = {}
+  var test    = anyLang ? function(t) { return t && t.trim().length > 0 }
+                        : function(t) { return /[a-zA-Z]/.test(t) }
 
   function walk(layer) {
     if (layer.type === 'SymbolInstance') {
@@ -145,7 +371,7 @@ function collectTexts(sel) {
       if (overrides) {
         for (var i = 0; i < overrides.length; i++) {
           var o = overrides[i]
-          if (o.property === 'stringValue' && o.value && /[a-zA-Z]/.test(o.value)) {
+          if (o.property === 'stringValue' && o.value && test(o.value + '')) {
             var ov = o.value + ''
             if (!textMap[ov]) { textMap[ov] = []; texts.push(ov) }
             textMap[ov].push({ kind: 'override', layer: layer, oid: o.id })
@@ -154,7 +380,7 @@ function collectTexts(sel) {
       }
       return
     }
-    if (layer.type === 'Text' && layer.text && /[a-zA-Z]/.test(layer.text)) {
+    if (layer.type === 'Text' && layer.text && test(layer.text + '')) {
       var t = layer.text + ''
       if (!textMap[t]) { textMap[t] = []; texts.push(t) }
       textMap[t].push({ kind: 'text', layer: layer })
@@ -198,163 +424,30 @@ function applyTranslations(textMap, texts, tr) {
   return count
 }
 
-// ─── 图层自动命名（规则推断，无需 API）────────────────────────────────────────────
+// ─── 溢出检测 ──────────────────────────────────────────────────────────────────
 
-var onRenameLayer = function(context) {
-  var sketch = require('sketch')
-  var sel = sketch.getSelectedDocument().selectedLayers.layers
-  if (sel.length === 0) { sketch.UI.message('请先选择要命名的图层'); return }
-
-  var nameCount = {}
-  function getUniqName(base) {
-    nameCount[base] = (nameCount[base] || 0) + 1
-    return nameCount[base] === 1 ? base : base + '-' + (nameCount[base] - 1)
+function findOverflow(sel) {
+  var overflow = []
+  function walk(layer) {
+    if (layer.type === 'Text') {
+      try { if (layer.sketchObject.hasClippedText()) overflow.push(layer) } catch(e) {}
+    }
+    if (layer.layers) {
+      var ch = layer.layers
+      for (var j = 0; j < ch.length; j++) walk(ch[j])
+    }
   }
+  for (var k = 0; k < sel.length; k++) walk(sel[k])
+  return overflow
+}
 
-  function getAllTexts(layer, depth, arr) {
-    if (layer.hidden || arr.length >= 6) return arr
-    if (layer.type === 'Text' && layer.text) {
-      var t = (layer.text + '').trim()
-      if (t.length > 0) arr.push(t)
-    }
-    if (layer.type !== 'SymbolInstance' && depth < 4) {
-      var ch = layer.layers || []
-      // 从末尾向前遍历：Sketch 数组顺序是渲染顺序（底层在前），逆序可先取到视觉上靠前的图层
-      for (var i = ch.length - 1; i >= 0; i--) getAllTexts(ch[i], depth + 1, arr)
-    }
-    return arr
+function setTranslating(on) {
+  for (var i = 0; i < _panelBtns.length; i++) _panelBtns[i].setEnabled_(!on)
+  if (_panelSpinner) {
+    _panelSpinner.setHidden_(on ? false : true)
+    if (on) _panelSpinner.startAnimation_(null)
+    else    _panelSpinner.stopAnimation_(null)
   }
-
-  function hasDescendantNamed(layer, name) {
-    if (layer.type === 'SymbolInstance') return false
-    var ch = layer.layers || []
-    for (var i = 0; i < ch.length; i++) {
-      if (ch[i].name === name) return true
-      if (hasDescendantNamed(ch[i], name)) return true
-    }
-    return false
-  }
-
-  function toKebab(t) {
-    return (t + '').replace(/[^\w一-龥]/g, '-').toLowerCase().replace(/^-+|-+$/g, '')
-  }
-
-  function inferName(layer) {
-    if (layer.type === 'Text') return null
-    var f = layer.frame
-    var w = Math.round(f.width), h = Math.round(f.height)
-    var texts = getAllTexts(layer, 0, [])
-    var ch = layer.type === 'SymbolInstance' ? [] : (layer.layers || [])
-    var visibleCh = []
-    for (var vi = 0; vi < ch.length; vi++) { if (!ch[vi].hidden) visibleCh.push(ch[vi]) }
-    var hasImage = false
-    for (var ii = 0; ii < visibleCh.length; ii++) {
-      if (visibleCh[ii].type === 'Image') { hasImage = true; break }
-      var sub = visibleCh[ii].layers || []
-      for (var si = 0; si < sub.length; si++) { if (sub[si].type === 'Image') { hasImage = true; break } }
-      if (hasImage) break
-    }
-
-    // 日期分割线
-    for (var di = 0; di < texts.length; di++) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(texts[di])) return 'date-divider'
-    }
-    // 底部导航 Tab（宽 ≥200，h ≤72，≥3 子项，每项有图标+文本，不依赖关键词）
-    if (w >= 200 && h <= 72 && visibleCh.length >= 3) {
-      var tabLike = true
-      for (var ti = 0; ti < visibleCh.length; ti++) {
-        var tSub = visibleCh[ti].type === 'SymbolInstance' ? [] : (visibleCh[ti].layers || []).filter(function(l) { return !l.hidden })
-        var tabHasText = false, tabHasIcon = false
-        for (var ts = 0; ts < tSub.length; ts++) {
-          if (tSub[ts].type === 'Text') tabHasText = true
-          if (tSub[ts].type === 'SymbolInstance') tabHasIcon = true
-          if (!tabHasIcon && tSub[ts].type !== 'Text') {
-            var tsub2 = tSub[ts].layers || []
-            for (var ts2 = 0; ts2 < tsub2.length; ts2++) {
-              if (tsub2[ts2].type === 'SymbolInstance') { tabHasIcon = true; break }
-            }
-          }
-        }
-        if (!tabHasText || !tabHasIcon) { tabLike = false; break }
-      }
-      if (tabLike) return 'nav-tabs'
-    }
-    // 图标按钮（小方块 ≤32px）
-    if (w <= 32 && h <= 32 && visibleCh.length <= 3) return 'icon-btn'
-    // 图标背景容器（40-64px 正方形，单个图标 Symbol，无文本）
-    if (w >= 40 && w <= 64 && Math.abs(w - h) <= 8 && visibleCh.length === 1 && visibleCh[0].type === 'SymbolInstance' && texts.length === 0) return 'icon-bg'
-    // 视频列表项
-    var hasRatio = false
-    for (var ri = 0; ri < texts.length; ri++) { if (/\d+:\d+/.test(texts[ri])) { hasRatio = true; break } }
-    if (w >= 280 && h >= 50 && h <= 130 && (hasImage || hasRatio)) return 'video-item'
-    // 图标格（所有直接子行 h 80-130 且每行有 ≥2 子项，代表 icon+label 行结构）
-    if (w >= 200 && h > 80 && visibleCh.length >= 2) {
-      var allIconRows = true
-      for (var ig = 0; ig < visibleCh.length; ig++) {
-        var igH = Math.round(visibleCh[ig].frame.height)
-        var igSub = visibleCh[ig].type === 'SymbolInstance' ? [] : (visibleCh[ig].layers || [])
-        if (igH < 80 || igH > 130 || igSub.length < 2) { allIconRows = false; break }
-      }
-      if (allIconRows) return 'icon-grid'
-    }
-    // 设置区（薄 header h 20-48 + 正文子层内含 ≥3 子行，不依赖文本）
-    if (w >= 200 && h > 80 && visibleCh.length >= 2) {
-      var hasThinHdr = false, hasRichBody = false
-      for (var ss = 0; ss < visibleCh.length; ss++) {
-        var ssh = Math.round(visibleCh[ss].frame.height)
-        if (ssh >= 20 && ssh <= 48) { hasThinHdr = true; continue }
-        if (ssh > 48) {
-          var bodySub = visibleCh[ss].type === 'SymbolInstance' ? [] : (visibleCh[ss].layers || []).filter(function(l) { return !l.hidden })
-          for (var bs = 0; bs < bodySub.length; bs++) {
-            var innerSub = bodySub[bs].type === 'SymbolInstance' ? [] : (bodySub[bs].layers || []).filter(function(l) { return !l.hidden })
-            if (innerSub.length >= 3) { hasRichBody = true; break }
-          }
-        }
-      }
-      if (hasThinHdr && hasRichBody) return 'settings-section'
-    }
-    // 列表容器（3 个以上相似高度的子行 → 命名为 list-container，不用子层文本）
-    if (w >= 200 && h > 80) {
-      var rowLikeCount = 0
-      for (var rk = 0; rk < visibleCh.length; rk++) {
-        var cf = visibleCh[rk].frame
-        var ch2 = Math.round(cf.height)
-        if (ch2 >= 36 && ch2 <= 80) rowLikeCount++
-      }
-      if (rowLikeCount >= 3) return 'list-container'
-    }
-    // 设置行 / 列表行（宽，带文字标签）
-    if (w >= 200 && h >= 36 && h <= 80 && texts.length >= 1 && texts[0].length <= 20) {
-      return 'row-' + toKebab(texts[0])
-    }
-    // 宽行（无短文本）
-    if (w >= 280 && h <= 80 && texts.length >= 2) return 'list-row'
-    if (w >= 280 && h <= 80) return 'row'
-    // 小组件（宽 ≤ 130，有短标签，且文本唯一）
-    if (w <= 130 && h <= 50 && texts.length === 1 && texts[0].length <= 15) return toKebab(texts[0])
-    return null
-  }
-
-  var GENERIC_RE = /^(Stack|Group|Rectangle|Oval|Path|Shape|Combined Shape|Line|Slice|Frame|Image|Layer|Bitmap|Text|Vector|Mask|编组|路径|矩形|椭圆形|蒙版|层叠|图层|位图|切片|形状|线段)(\s*\d+)?$/i
-  var renamed = 0
-
-  function renameTraverse(layer) {
-    if (layer.hidden) return
-    if (GENERIC_RE.test(layer.name) && layer.type !== 'ShapePath') {
-      var newBase = inferName(layer)
-      if (newBase) {
-        var safeName = hasDescendantNamed(layer, newBase) ? newBase + '-wrap' : newBase
-        var newName = getUniqName(safeName)
-        if (newName !== layer.name) { layer.name = newName; renamed++ }
-      }
-    }
-    if (layer.type === 'SymbolInstance') return
-    var ch = layer.layers || []
-    for (var i = 0; i < ch.length; i++) renameTraverse(ch[i])
-  }
-
-  for (var i = 0; i < sel.length; i++) renameTraverse(sel[i])
-  sketch.UI.message(renamed > 0 ? ('已重命名 ' + renamed + ' 个图层') : '没有找到需要重命名的通用图层名')
 }
 
 // ─── 豆包 API 调用 ─────────────────────────────────────────────────────────────
@@ -413,3 +506,89 @@ function callDoubao(apiKey, model, texts, langName) {
   }
 }
 
+// ─── 浮动面板 ──────────────────────────────────────────────────────────────────
+
+var _panel              = null
+var _panelCOS           = null
+var _panelBtns          = []
+var _panelSpinner       = null
+var _stressDlg          = null
+var _stressCOS          = null
+var _hasRunTranslation  = false  // 汉化成功一次后为 true，才显示"还原英文"按钮
+
+var onShowPanel = function(context) {
+  try {
+    if (_panel && _panel.isVisible()) {
+      _panel.makeKeyAndOrderFront_(null)
+      return
+    }
+
+    // 释放上一次遗留的 COScript（此处是新调用上下文，释放安全）
+    if (_panelCOS) { _panelCOS.setShouldKeepAround_(false); _panelCOS = null }
+
+    var coscript = COScript.currentCOScript()
+    coscript.setShouldKeepAround_(true)
+    _panelCOS = coscript
+
+    var W = 230, H = _hasRunTranslation ? 170 : 134
+    // NSWindowStyleMaskTitled=1, NSWindowStyleMaskClosable=2, NSBackingStoreBuffered=2
+    var win = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+      NSMakeRect(0, 0, W, H),
+      1 | 2,
+      2,
+      false
+    )
+    win.setTitle_('Translate UI')
+    win.setFloatingPanel_(true)
+    win.center()
+    win.setReleasedWhenClosed_(false)
+
+    var cv   = win.contentView()
+    var btns = [
+      ['切换语言预览…', function() { onStressTest({}) }],
+      ['汉化选中画板',  function() { onRun({}) }],
+    ]
+    if (_hasRunTranslation) {
+      btns.push(['还原英文', function() { onRestoreEnglish({}) }])
+    }
+    _panelBtns = []
+    var y = H - 52
+    for (var i = 0; i < btns.length; i++) {
+      var btn = NSButton.alloc().initWithFrame_(NSMakeRect(16, y, W - 32, 28))
+      btn.setTitle_(btns[i][0])
+      btn.setBezelStyle_(1)
+      btn.setCOSJSTargetFunction(btns[i][1])
+      btn.setAction_('callAction:')
+      cv.addSubview_(btn)
+      _panelBtns.push(btn)
+      y -= 36
+    }
+
+    var spinner = NSProgressIndicator.alloc().initWithFrame_(NSMakeRect(W / 2 - 8, 14, 16, 16))
+    spinner.setStyle_(0)  // NSProgressIndicatorStyleSpinning
+    spinner.setIndeterminate_(true)
+    spinner.setHidden_(true)
+    cv.addSubview_(spinner)
+    _panelSpinner = spinner
+
+    // 拦截系统关闭按钮，用 orderOut_ 隐藏而非 close，避免 notification block crash
+    var closeBtn = win.standardWindowButton_(0)  // NSWindowCloseButton = 0
+    if (closeBtn) {
+      closeBtn.setCOSJSTargetFunction(function() {
+        _panel = null
+        _panelBtns = []
+        _panelSpinner = null
+        win.orderOut_(null)
+        // 不在此处释放 _panelCOS：在自身执行栈里 setShouldKeepAround_(false) 会立即回收上下文导致 crash
+        // 由下次 onShowPanel 调用（新上下文）安全释放
+      })
+      closeBtn.setAction_('callAction:')
+    }
+
+    win.makeKeyAndOrderFront_(null)
+    _panel = win
+  } catch(e) {
+    var sketch = require('sketch')
+    sketch.UI.alert('面板错误', e.message || String(e))
+  }
+}
