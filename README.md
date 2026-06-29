@@ -77,7 +77,7 @@
 
 **安装**
 
-**[⬇️ 下载 TranslateUI.sketchplugin.zip](https://github.com/velyoo/claude-skills/releases/latest)**
+**[⬇️ 下载 TranslateUI.sketchplugin.zip](https://github.com/velyoo/claude-skills/raw/main/sketch-translate-ui/TranslateUI.sketchplugin.zip)**
 
 1. 下载上方 zip，解压后双击 `TranslateUI.sketchplugin` 安装
 
